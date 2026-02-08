@@ -10,3 +10,8 @@ dependencies = [
     "sqlalchemy-serializer>=1.4.12",
     "uvicorn>=0.37.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.15",
+]

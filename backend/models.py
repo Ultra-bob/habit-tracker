@@ -1,3 +1,4 @@
+from rich.color import color
 from sqlalchemy import (
     Column,
     Integer,
@@ -64,6 +65,29 @@ class MeasureableHabit(Habit):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
 
+class ChoiceOption(Base):
+    __tablename__ = "choice_options"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    habit_id: Mapped[int] = mapped_column(ForeignKey("choice_habits.id", ondelete="CASCADE"), nullable=False)
+
+    habit: Mapped['ChoiceHabit'] = relationship(back_populates="options")
+
+    option_text: Mapped[str] = mapped_column(String(255), nullable=False)
+    color: Mapped[str] = mapped_column(String(20), nullable=True)
+    icon: Mapped[str] = mapped_column(String(50), nullable=True)
+
+class ChoiceHabit(Habit):
+    __tablename__ = "choice_habits"
+
+    id: Mapped[int] = mapped_column(ForeignKey("habits.id"), primary_key=True)
+    options: Mapped[list[ChoiceOption]] = relationship(
+        back_populates="habit",
+        cascade="all, delete-orphan",
+    )
+
+    __mapper_args__ = {"polymorphic_identity": HabitType.CHOICE}
+
 class LogEntry(Base):
     __tablename__ = "habit_logs"
 
@@ -75,8 +99,31 @@ class LogEntry(Base):
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
 
+class CompletionLogEntry(LogEntry):
+    __tablename__ = "completion_logs"
 
+    id: Mapped[int] = mapped_column(ForeignKey("habit_logs.id"), primary_key=True)
+    status: Mapped[bool] = mapped_column()
 
+    __mapper_args__ = {"polymorphic_identity": HabitType.COMPLETION}
+
+class MeasureableLogEntry(LogEntry):
+    __tablename__ = "measureable_logs"
+
+    id: Mapped[int] = mapped_column(ForeignKey("habit_logs.id"), primary_key=True)
+    value: Mapped[int] = mapped_column()
+
+    __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
+
+class ChoiceLogEntry(LogEntry):
+    __tablename__ = "choice_logs"
+
+    id: Mapped[int] = mapped_column(ForeignKey("habit_logs.id"), primary_key=True)
+    
+    option_id: Mapped[int] = mapped_column(ForeignKey("choice_options.id"), nullable=False)
+    option: Mapped[ChoiceOption] = relationship()
+
+    __mapper_args__ = {"polymorphic_identity": HabitType.CHOICE}
 
 def get_engine():
     engine = create_engine(

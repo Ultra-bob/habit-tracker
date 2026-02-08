@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import Habit, CompletionHabit, MeasureableHabit, HabitLog, get_engine
+from models import Habit, CompletionHabit, MeasureableHabit, LogEntry, get_engine
 from sqlalchemy.orm import sessionmaker
 from api_models import HabitInput, NewMeasureableHabit, NewCompletionHabit
 
@@ -31,14 +31,6 @@ def log_habit(id: int, status: int):
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
 
-        if isinstance(habit, CompletionHabit):
-            if status != 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Invalid status for completion habit. Must be 1.",
-                )
-        session.add(HabitLog(habit_id=id, status=status))
-        session.commit()
 
 @app.get("/log/{id}")
 def get_logs(id: int):
