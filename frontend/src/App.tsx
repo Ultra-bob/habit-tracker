@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import './App.css'
 
 function App() {
   const [count, setCount] = useState<number | null>(null)
@@ -23,7 +22,7 @@ function App() {
   return (
     <>
       <div className="card">
-        <button onClick={increment}>
+        <button onClick={increment} className="p-4 rounded-lg m-4 bg-blue-800 text-white hover:bg-blue-600">
           count is {count}
         </button>
       </div>
