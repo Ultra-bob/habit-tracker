@@ -1,41 +1,79 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import Habit, CompletionHabit, MeasureableHabit, LogEntry, get_engine
+from models import get_engine
 from sqlalchemy.orm import sessionmaker
-from api_models import HabitInput, NewMeasureableHabit, NewCompletionHabit
+import api_models as a # Shortcut for "API models", reduces confusion compared to importing without alias
+import models as d # Shortcut for "database models"
 
 app = FastAPI()
 engine = get_engine()
 db = sessionmaker(bind=engine)
 
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"])
-counter = 0
-
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"]) # ty: ignore[invalid-argument-type] #? Why is this an error
 
 @app.post("/habits/new", status_code=201)
-def create_habit(habit: HabitInput):
-    if isinstance(habit, NewCompletionHabit):
+def create_habit(habit: a.HabitInput):
+    if isinstance(habit, a.NewCompletionHabit):
         with db() as session:
-            session.add(CompletionHabit(**habit.model_dump(exclude={"type"})))
+            session.add(d.CompletionHabit(**habit.model_dump(exclude={"type"})))
             session.commit()
-    elif isinstance(habit, NewMeasureableHabit):
+    elif isinstance(habit, a.NewMeasureableHabit):
         with db() as session:
-            session.add(MeasureableHabit(**habit.model_dump(exclude={"type"})))
+            session.add(d.MeasureableHabit(**habit.model_dump(exclude={"type"})))
             session.commit()
+    elif isinstance(habit, a.NewChoiceHabit):
+        with db() as session:
+            choice_habit = d.ChoiceHabit(**habit.model_dump(exclude={"type", "options"}))
+            session.add(choice_habit)
+            for option in habit.options:
+                choice_option = d.ChoiceOption(**option.model_dump(), habit_id=choice_habit.id)
+                session.add(choice_option)
+            session.commit()
+    #? Will FastAPI guarantee that this case is impossible?
 
 
 @app.post("/log/{id}")
-def log_habit(id: int, status: int):
+def log_habit(log: a.HabitLog):
     with db() as session:
-        habit = session.get(Habit, id)
+        habit = session.get(d.Habit, log.habit_id)
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
+        if isinstance(log, a.CompletionHabitLog):
+            entry = d.CompletionLogEntry(
+                habit_id=log.habit_id,
+                recorded_at=log.log_date,
+                status=log.status,
+                habit_type=d.HabitType.COMPLETION,
+            )
+        elif isinstance(log, a.MeasureableHabitLog):
+            entry = d.MeasureableLogEntry(
+                habit_id=log.habit_id,
+                recorded_at=log.log_date,
+                value=log.amount,
+                habit_type=d.HabitType.MEASURABLE,
+            )
+        elif isinstance(log, a.ChoiceHabitLog):
+            # Validation to ensure option belongs to the habit
+            option = session.get(d.ChoiceOption, log.option_id)
+            if option is None:
+                raise HTTPException(status_code=404, detail="Option not found")
+            if option.habit_id != log.habit_id:
+                raise HTTPException(status_code=400, detail="Option does not belong to the specified habit")
+            entry = d.ChoiceLogEntry(
+                habit_id=log.habit_id,
+                recorded_at=log.log_date,
+                option_id=log.option_id,
+                habit_type=d.HabitType.CHOICE,
+            )
+
+        session.add(entry)
+        session.commit()
 
 
 @app.get("/log/{id}")
 def get_logs(id: int):
     with db() as session:
-        habit = session.get(Habit, id)
+        habit = session.get(d.Habit, id)
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
         
@@ -44,5 +82,5 @@ def get_logs(id: int):
 @app.get("/habits")
 def list_habits():
     with db() as session:
-        habits = session.query(Habit).all()
+        habits = session.query(d.Habit).all()
         return [habit.to_dict() for habit in habits]

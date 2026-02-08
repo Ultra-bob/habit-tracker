@@ -3,9 +3,26 @@ from typing import Literal, Annotated
 from models import HabitType, Timeframe
 from datetime import datetime
 
-class HabitLog(BaseModel):
+class HabitLogBase(BaseModel):
     habit_id: int
     log_date: datetime
+
+class CompletionHabitLog(HabitLogBase):
+    type: Literal[HabitType.COMPLETION] = HabitType.COMPLETION
+    status: bool
+
+class MeasureableHabitLog(HabitLogBase):
+    type: Literal[HabitType.MEASURABLE] = HabitType.MEASURABLE
+    amount: int
+
+class ChoiceHabitLog(HabitLogBase):
+    type: Literal[HabitType.CHOICE] = HabitType.CHOICE
+    option_id: int
+
+class ChoiceHabitOption(BaseModel):
+    option_text: str
+    color: str | None = None
+    icon: str | None = None
 
 class NewHabit(BaseModel):
     name: str
@@ -20,7 +37,16 @@ class NewMeasureableHabit(NewHabit):
     target: int
     unit: str
 
+class NewChoiceHabit(NewHabit):
+    type: Literal[HabitType.CHOICE] = HabitType.CHOICE
+    options: list[ChoiceHabitOption]
+
 HabitInput = Annotated[
-    NewCompletionHabit | NewMeasureableHabit,
+    NewCompletionHabit | NewMeasureableHabit | NewChoiceHabit,
+    Field(discriminator="type")
+]
+
+HabitLog = Annotated[
+    CompletionHabitLog | MeasureableHabitLog | ChoiceHabitLog,
     Field(discriminator="type")
 ]
