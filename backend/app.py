@@ -1,14 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import get_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 import api_models as a  # Shortcut for "API models", reduces confusion compared to importing without alias
 import models as d  # Shortcut for "database models"
 
 app = FastAPI()
 
 # Necessary to prevent initializing the production database when running tests, since the test suite monkeypatches this variable
-db: sessionmaker = None  # ty: ignore[invalid-assignment]
+db: sessionmaker[Session] = None  # ty: ignore[invalid-assignment]
 
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"])  # ty: ignore[invalid-argument-type] #? Why is this an error
 
@@ -46,9 +46,9 @@ def log_habit(id: int, log: a.HabitLog):
         habit = session.get(d.Habit, id)
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
+        if habit.habit_type != log.type:
+            raise HTTPException(status_code=400, detail="Habit type mismatch")
         if isinstance(log, a.CompletionHabitLog):
-            if not isinstance(habit, d.CompletionHabit):
-                raise HTTPException(status_code=400, detail="Habit type mismatch")
             entry = d.CompletionLogEntry(
                 habit_id=id,
                 recorded_at=log.log_date,
@@ -56,8 +56,6 @@ def log_habit(id: int, log: a.HabitLog):
                 habit_type=d.HabitType.COMPLETION,
             )
         elif isinstance(log, a.MeasureableHabitLog):
-            if not isinstance(habit, d.MeasureableHabit):
-                raise HTTPException(status_code=400, detail="Habit type mismatch")
             entry = d.MeasureableLogEntry(
                 habit_id=id,
                 recorded_at=log.log_date,
@@ -65,8 +63,6 @@ def log_habit(id: int, log: a.HabitLog):
                 habit_type=d.HabitType.MEASURABLE,
             )
         elif isinstance(log, a.ChoiceHabitLog):
-            if not isinstance(habit, d.ChoiceHabit):
-                raise HTTPException(status_code=400, detail="Habit type mismatch")
             # Validation to ensure option belongs to the habit
             option = session.get(d.ChoiceOption, log.option_id)
             if option is None:
