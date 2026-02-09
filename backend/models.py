@@ -1,4 +1,3 @@
-from rich.color import color
 from sqlalchemy import (
     Column,
     Integer,
@@ -12,19 +11,19 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy_serializer import SerializerMixin
 from datetime import datetime, timezone
 from sqlalchemy import create_engine
-from enum import IntEnum
+from enum import StrEnum
 
 
-class HabitType(IntEnum):
-    COMPLETION = 1  # Simple checkbox
-    MEASURABLE = 2  # Measurement (water, calories)
-    CHOICE = 3  # Choose from a list (type of exercise: cardio, strength)
+class HabitType(StrEnum):
+    COMPLETION = "completion"
+    MEASURABLE = "measurable"
+    CHOICE = "choice"
 
 
-class Timeframe(IntEnum):
-    DAY = 1
-    WEEK = 2
-    MONTH = 3
+class Timeframe(StrEnum):
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
 
 
 class Base(DeclarativeBase, SerializerMixin):
@@ -44,6 +43,9 @@ class Habit(Base):
     )
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
+
+    def to_dict(self):  # ty:ignore[invalid-method-override] #? Again, this is (probably) fine, why is there a type error?
+        return super().to_dict(rules=("-logs", "-options.habit"))
 
 
 class CompletionHabit(Habit):
@@ -119,7 +121,7 @@ class ChoiceLogEntry(LogEntry):
     __tablename__ = "choice_logs"
 
     id: Mapped[int] = mapped_column(ForeignKey("habit_logs.id"), primary_key=True)
-    
+
     option_id: Mapped[int] = mapped_column(ForeignKey("choice_options.id"), nullable=False)
     option: Mapped[ChoiceOption] = relationship()
 

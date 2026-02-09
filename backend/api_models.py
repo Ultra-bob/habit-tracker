@@ -4,7 +4,6 @@ from models import HabitType, Timeframe
 from datetime import datetime
 
 class HabitLogBase(BaseModel):
-    habit_id: int
     log_date: datetime
 
 class CompletionHabitLog(HabitLogBase):
@@ -46,6 +45,9 @@ HabitInput = Annotated[
     Field(discriminator="type")
 ]
 
+# Requiring the caller to provide the type makes sense for creating a new habit, but for logging, it is redundant.
+# We could infer the type, but then we would lose FastAPI's automatic validation.
+# Something to consider later...
 HabitLog = Annotated[
     CompletionHabitLog | MeasureableHabitLog | ChoiceHabitLog,
     Field(discriminator="type")

@@ -33,34 +33,40 @@ def create_habit(habit: a.HabitInput):
 
 
 @app.post("/log/{id}")
-def log_habit(log: a.HabitLog):
+def log_habit(id: int, log: a.HabitLog):
     with db() as session:
-        habit = session.get(d.Habit, log.habit_id)
+        habit = session.get(d.Habit, id)
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
         if isinstance(log, a.CompletionHabitLog):
+            if not isinstance(habit, d.CompletionHabit):
+                raise HTTPException(status_code=400, detail="Habit type mismatch")
             entry = d.CompletionLogEntry(
-                habit_id=log.habit_id,
+                habit_id=id,
                 recorded_at=log.log_date,
                 status=log.status,
                 habit_type=d.HabitType.COMPLETION,
             )
         elif isinstance(log, a.MeasureableHabitLog):
+            if not isinstance(habit, d.MeasureableHabit):
+                raise HTTPException(status_code=400, detail="Habit type mismatch")
             entry = d.MeasureableLogEntry(
-                habit_id=log.habit_id,
+                habit_id=id,
                 recorded_at=log.log_date,
                 value=log.amount,
                 habit_type=d.HabitType.MEASURABLE,
             )
         elif isinstance(log, a.ChoiceHabitLog):
+            if not isinstance(habit, d.ChoiceHabit):
+                raise HTTPException(status_code=400, detail="Habit type mismatch")
             # Validation to ensure option belongs to the habit
             option = session.get(d.ChoiceOption, log.option_id)
             if option is None:
                 raise HTTPException(status_code=404, detail="Option not found")
-            if option.habit_id != log.habit_id:
+            if option.habit_id != id:
                 raise HTTPException(status_code=400, detail="Option does not belong to the specified habit")
             entry = d.ChoiceLogEntry(
-                habit_id=log.habit_id,
+                habit_id=id,
                 recorded_at=log.log_date,
                 option_id=log.option_id,
                 habit_type=d.HabitType.CHOICE,
@@ -84,3 +90,7 @@ def list_habits():
     with db() as session:
         habits = session.query(d.Habit).all()
         return [habit.to_dict() for habit in habits]
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
