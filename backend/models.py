@@ -1,16 +1,13 @@
 import sqlalchemy
 from sqlalchemy import (
-    Column,
-    Integer,
     String,
     DateTime,
-    Boolean,
     ForeignKey,
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy_serializer import SerializerMixin
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import create_engine
 from enum import StrEnum
 
@@ -68,17 +65,21 @@ class MeasureableHabit(Habit):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
 
+
 class ChoiceOption(Base):
     __tablename__ = "choice_options"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    habit_id: Mapped[int] = mapped_column(ForeignKey("choice_habits.id", ondelete="CASCADE"), nullable=False)
+    habit_id: Mapped[int] = mapped_column(
+        ForeignKey("choice_habits.id", ondelete="CASCADE"), nullable=False
+    )
 
-    habit: Mapped['ChoiceHabit'] = relationship(back_populates="options")
+    habit: Mapped["ChoiceHabit"] = relationship(back_populates="options")
 
     option_text: Mapped[str] = mapped_column(String(255), nullable=False)
     color: Mapped[str] = mapped_column(String(20), nullable=True)
     icon: Mapped[str] = mapped_column(String(50), nullable=True)
+
 
 class ChoiceHabit(Habit):
     __tablename__ = "choice_habits"
@@ -91,22 +92,26 @@ class ChoiceHabit(Habit):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.CHOICE}
 
+
 class LogEntry(Base):
     __tablename__ = "habit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id", ondelete="CASCADE"), nullable=False)
+    habit_id: Mapped[int] = mapped_column(
+        ForeignKey("habits.id", ondelete="CASCADE"), nullable=False
+    )
     habit: Mapped[Habit] = relationship(back_populates="logs")
     recorded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     habit_type: Mapped[HabitType] = mapped_column(SQLEnum(HabitType), nullable=False)
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
 
-    def to_dict(self):
+    def to_dict(self):  # ty:ignore[invalid-method-override] #? ditto
         base_dict = super().to_dict(rules=("-habit", "-option.habit"))
         # if self.habit_type == HabitType.CHOICE:
         #     base_dict["option"] = self.option.to_dict()
         return base_dict
+
 
 class CompletionLogEntry(LogEntry):
     __tablename__ = "completion_logs"
@@ -116,6 +121,7 @@ class CompletionLogEntry(LogEntry):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.COMPLETION}
 
+
 class MeasureableLogEntry(LogEntry):
     __tablename__ = "measureable_logs"
 
@@ -124,15 +130,19 @@ class MeasureableLogEntry(LogEntry):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
 
+
 class ChoiceLogEntry(LogEntry):
     __tablename__ = "choice_logs"
 
     id: Mapped[int] = mapped_column(ForeignKey("habit_logs.id"), primary_key=True)
 
-    option_id: Mapped[int] = mapped_column(ForeignKey("choice_options.id"), nullable=False)
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("choice_options.id"), nullable=False
+    )
     option: Mapped[ChoiceOption] = relationship()
 
     __mapper_args__ = {"polymorphic_identity": HabitType.CHOICE}
+
 
 def get_engine() -> sqlalchemy.engine.Engine:
     engine = create_engine(

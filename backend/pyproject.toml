@@ -11,6 +11,9 @@ dependencies = [
     "uvicorn>=0.37.0",
 ]
 
+[tool.ruff.lint]
+ignore = ["E712"]
+
 [dependency-groups]
 dev = [
     "ty>=0.0.15",
