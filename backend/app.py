@@ -6,8 +6,9 @@ import api_models as a # Shortcut for "API models", reduces confusion compared t
 import models as d # Shortcut for "database models"
 
 app = FastAPI()
-engine = get_engine()
-db = sessionmaker(bind=engine)
+
+# Necessary to prevent initializing the production database when running tests, since the test suite monkeypatches this variable
+db: sessionmaker = None # ty: ignore[invalid-assignment]
 
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"]) # ty: ignore[invalid-argument-type] #? Why is this an error
 
@@ -25,6 +26,8 @@ def create_habit(habit: a.HabitInput):
         with db() as session:
             choice_habit = d.ChoiceHabit(**habit.model_dump(exclude={"type", "options"}))
             session.add(choice_habit)
+            session.commit()
+            
             for option in habit.options:
                 choice_option = d.ChoiceOption(**option.model_dump(), habit_id=choice_habit.id)
                 session.add(choice_option)
@@ -83,7 +86,7 @@ def get_logs(id: int):
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
         
-        return habit.logs
+        return [log.to_dict() for log in habit.logs]
 
 @app.get("/habits")
 def list_habits():
@@ -92,5 +95,9 @@ def list_habits():
         return [habit.to_dict() for habit in habits]
 
 if __name__ == "__main__":
+
+    engine = get_engine()
+    db = sessionmaker(bind=engine)
+
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

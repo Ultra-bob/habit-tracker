@@ -1,3 +1,4 @@
+import sqlalchemy
 from sqlalchemy import (
     Column,
     Integer,
@@ -101,6 +102,12 @@ class LogEntry(Base):
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
 
+    def to_dict(self):
+        base_dict = super().to_dict(rules=("-habit", "-option.habit"))
+        # if self.habit_type == HabitType.CHOICE:
+        #     base_dict["option"] = self.option.to_dict()
+        return base_dict
+
 class CompletionLogEntry(LogEntry):
     __tablename__ = "completion_logs"
 
@@ -127,7 +134,7 @@ class ChoiceLogEntry(LogEntry):
 
     __mapper_args__ = {"polymorphic_identity": HabitType.CHOICE}
 
-def get_engine():
+def get_engine() -> sqlalchemy.engine.Engine:
     engine = create_engine(
         "sqlite:///habits.db", echo=True
     )  # Use an in-memory SQLite database for example
