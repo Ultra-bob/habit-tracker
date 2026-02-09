@@ -14,31 +14,85 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"])  # t
 
 
 @app.post("/habits/new", status_code=201)
-def create_habit(habit: a.HabitInput):
-    if isinstance(habit, a.NewCompletionHabit):
+def create_habit(options: a.HabitInput):
+    id = None
+    if isinstance(options, a.CompletionHabitOptions):
         with db() as session:
-            session.add(d.CompletionHabit(**habit.model_dump(exclude={"type"})))
+            habit = d.CompletionHabit(**options.model_dump(exclude={"type"}))
+            session.add(habit)
             session.commit()
-    elif isinstance(habit, a.NewMeasureableHabit):
+            id = habit.id
+    elif isinstance(options, a.MeasureableHabitOptions):
         with db() as session:
-            session.add(d.MeasureableHabit(**habit.model_dump(exclude={"type"})))
+            habit = d.MeasureableHabit(**options.model_dump(exclude={"type"}))
+            session.add(habit)
             session.commit()
-    elif isinstance(habit, a.NewChoiceHabit):
+            id = habit.id
+    elif isinstance(options, a.ChoiceHabitOptions):
         with db() as session:
-            choice_habit = d.ChoiceHabit(
-                **habit.model_dump(exclude={"type", "options"})
+            habit = d.ChoiceHabit(
+                **options.model_dump(exclude={"type", "options"})
             )
-            session.add(choice_habit)
+            session.add(habit)
             session.commit()
 
-            for option in habit.options:
+            for option in options.options:
                 choice_option = d.ChoiceOption(
-                    **option.model_dump(), habit_id=choice_habit.id
+                    **option.model_dump(), habit_id=habit.id
                 )
                 session.add(choice_option)
             session.commit()
+            id = habit.id
     # ? Will FastAPI guarantee that this case is impossible?
 
+    return {"message": "Habit created", "id": id}
+
+@app.patch("/habits/{id}")
+def update_habit(id: int, habit: a.HabitPatch):
+    with db() as session:
+        existing_habit = session.get(d.Habit, id)
+        if existing_habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        if existing_habit.habit_type != habit.type:
+            raise HTTPException(status_code=400, detail="Changing habit type is not supported")
+
+        update_data = habit.model_dump(exclude_unset=True, exclude={"type"})
+        for key, value in update_data.items():
+            setattr(existing_habit, key, value)
+        session.commit()
+
+@app.post("/habits/{id}/options")
+def add_option(id: int, option: a.ChoiceHabitOption):
+    with db() as session:
+        habit = session.get(d.Habit, id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        if habit.habit_type != d.HabitType.CHOICE:
+            raise HTTPException(status_code=400, detail="Habit is not a choice habit")
+
+        choice_option = d.ChoiceOption(
+            **option.model_dump(), habit_id=id
+        )
+        session.add(choice_option)
+        session.commit()
+
+@app.patch("/habits/{habit_id}/options/{option_id}")
+def update_option(habit_id: int, option_id: int, option: a.ChoiceHabitOptionPatch):
+    with db() as session:
+        habit = session.get(d.Habit, habit_id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        if habit.habit_type != d.HabitType.CHOICE:
+            raise HTTPException(status_code=400, detail="Habit is not a choice habit")
+
+        existing_option = session.get(d.ChoiceOption, option_id)
+        if existing_option is None or existing_option.habit_id != habit_id:
+            raise HTTPException(status_code=404, detail="Option not found for this habit")
+
+        update_data = option.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(existing_option, key, value)
+        session.commit()
 
 @app.post("/log/{id}")
 def log_habit(id: int, log: a.HabitLog):
@@ -48,6 +102,7 @@ def log_habit(id: int, log: a.HabitLog):
             raise HTTPException(status_code=404, detail="Habit not found")
         if habit.habit_type != log.type:
             raise HTTPException(status_code=400, detail="Habit type mismatch")
+
         if isinstance(log, a.CompletionHabitLog):
             entry = d.CompletionLogEntry(
                 habit_id=id,
