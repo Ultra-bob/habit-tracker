@@ -1,30 +1,22 @@
 import { useState, useEffect } from 'react'
 
 function App() {
-  const [count, setCount] = useState<number | null>(null)
+  const [habits, setHabits] = useState([])
 
   useEffect(() => {
-    fetch('http://localhost:8000/counter')
-      .then(res => res.json())
-      .then(data => {
-        setCount(data.counter)
-      })
+    fetch('http://localhost:8000/habits')
+      .then(response => response.json())
+      .then(data => setHabits(data))
+      .catch(error => console.error('Error fetching habits:', error))
   }, [])
-
-  const increment = () => {
-    fetch('http://localhost:8000/increment', { method: 'POST' })
-      .then(res => res.json())
-      .then(data => {
-        setCount(data.counter)
-      })
-  }
 
   return (
     <>
       <div className="card">
-        <button onClick={increment} className="p-4 rounded-lg m-4 bg-blue-800 text-white hover:bg-blue-600">
-          count is {count}
-        </button>
+        <h1 className="text-2xl font-bold">Habits</h1>
+        {habits.map(habit => (
+          <div key={habit.id}>{habit.name}</div>
+        ))}
       </div>
     </>
   )
