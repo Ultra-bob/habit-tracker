@@ -102,3 +102,12 @@ HabitLog = Annotated[
     CompletionHabitLog | MeasureableHabitLog | ChoiceHabitLog,
     Field(discriminator="type"),
 ]
+
+CompletionHabitLogPatch = make_patch_model(CompletionHabitLog)
+MeasureableHabitLogPatch = make_patch_model(MeasureableHabitLog)
+ChoiceHabitLogPatch = make_patch_model(ChoiceHabitLog)
+
+HabitLogPatch = Annotated[
+    CompletionHabitLogPatch | MeasureableHabitLogPatch | ChoiceHabitLogPatch,
+    Field(discriminator="type"),
+]

@@ -61,6 +61,16 @@ def update_habit(id: int, habit: a.HabitPatch):
             setattr(existing_habit, key, value)
         session.commit()
 
+@app.delete("/habits/{id}")
+def delete_habit(id: int):
+    with db() as session:
+        habit = session.get(d.Habit, id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        session.delete(habit)
+        session.commit()
+
+
 @app.post("/habits/{id}/options")
 def add_option(id: int, option: a.ChoiceHabitOption):
     with db() as session:
@@ -93,6 +103,48 @@ def update_option(habit_id: int, option_id: int, option: a.ChoiceHabitOptionPatc
         for key, value in update_data.items():
             setattr(existing_option, key, value)
         session.commit()
+
+@app.delete("/habits/{habit_id}/options/{option_id}")
+def delete_option(habit_id: int, option_id: int):
+    with db() as session:
+        habit = session.get(d.Habit, habit_id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        if habit.habit_type != d.HabitType.CHOICE:
+            raise HTTPException(status_code=400, detail="Habit is not a choice habit")
+
+        existing_option = session.get(d.ChoiceOption, option_id)
+        if existing_option is None or existing_option.habit_id != habit_id:
+            raise HTTPException(status_code=404, detail="Option not found for this habit")
+
+        session.delete(existing_option)
+        session.commit()
+
+@app.get("/habits/{id}")
+def get_habit(id: int):
+    with db() as session:
+        habit = session.get(d.Habit, id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        return habit.to_dict()
+
+@app.get("/habits/{id}/options")
+def get_habit_options(id: int):
+    with db() as session:
+        habit = session.get(d.Habit, id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        if not isinstance(habit, d.ChoiceHabit):
+            raise HTTPException(status_code=400, detail="Habit is not a choice habit")
+        return [option.to_dict() for option in habit.options]
+
+@app.get("/habits/{habit_id}/logs")
+def get_habit_logs(habit_id: int):
+    with db() as session:
+        habit = session.get(d.Habit, habit_id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        return [log.to_dict() for log in habit.logs]
 
 @app.post("/log/{id}")
 def log_habit(id: int, log: a.HabitLog):
@@ -133,20 +185,41 @@ def log_habit(id: int, log: a.HabitLog):
                 option_id=log.option_id,
                 habit_type=d.HabitType.CHOICE,
             )
-
         session.add(entry)
         session.commit()
+        return {"message": "Habit logged", "id": entry.id}
 
 
 @app.get("/log/{id}")
-def get_logs(id: int):
+def get_log_entry(id: int):
     with db() as session:
-        habit = session.get(d.Habit, id)
-        if habit is None:
-            raise HTTPException(status_code=404, detail="Habit not found")
+        entry = session.get(d.LogEntry, id)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Log entry not found")
+        return entry.to_dict()
 
-        return [log.to_dict() for log in habit.logs]
+@app.patch("/log/{id}")
+def update_log_entry(id: int, log: a.HabitLogPatch):
+    with db() as session:
+        log_entry = session.get(d.LogEntry, id)
+        if log_entry is None:
+            raise HTTPException(status_code=404, detail="Log entry not found")
+        if log_entry.habit_type != log.type:
+            raise HTTPException(status_code=400, detail="Habit type mismatch")
 
+        update_data = log.model_dump(exclude_unset=True, exclude={"type"})
+        for key, value in update_data.items():
+            setattr(log_entry, key, value)
+        session.commit()
+
+@app.delete("/log/{id}")
+def delete_log_entry(id: int):
+    with db() as session:
+        log_entry = session.get(d.LogEntry, id)
+        if log_entry is None:
+            raise HTTPException(status_code=404, detail="Log entry not found")
+        session.delete(log_entry)
+        session.commit()
 
 @app.get("/habits")
 def list_habits():

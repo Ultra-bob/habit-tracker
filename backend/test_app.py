@@ -304,7 +304,7 @@ def test_log_completion_habit():
     )
     assert response.status_code == 200
 
-    response = client.get(f"/log/{habit_id}")
+    response = client.get(f"/habits/{habit_id}/logs")
     assert response.status_code == 200
     logs = response.json()
     assert len(logs) == 1
@@ -340,11 +340,129 @@ def test_log_choice_habit():
             "type": "choice",
         },
     )
+    entry_id = response.json()["id"]
     assert response.status_code == 200
 
+    response = client.get(f"/log/{entry_id}")
+    assert response.status_code == 200
+    log_entry = response.json()
+    assert log_entry["option"]["id"] == option_id
+    assert log_entry["habit_type"] == "choice"
+
+def test_delete_habit():
+    response = client.post(
+        "/habits/new",
+        json={
+            "name": "Test Completion Habit",
+            "type": "completion",
+            "completion_target": 1,
+            "target_timeframe": "day",
+        },
+    )
+    assert response.status_code == 201
+    habit_id = response.json()["id"]
+
+    response = client.delete(f"/habits/{habit_id}")
+    assert response.status_code == 200
+
+def test_delete_habit_deletes_logs_and_options():
+    # Create a choice habit with an option and a log
+    response = client.post(
+        "/habits/new",
+        json={
+            "name": "Test Choice Habit",
+            "type": "choice",
+            "options": [
+                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
+            ],
+        },
+    )
+    assert response.status_code == 201
+    habit_id = response.json()["id"]
+
+    response = client.get("/habits")
+    option_id = response.json()[0]["options"][0]["id"]
+
+    response = client.post(
+        f"/log/{habit_id}",
+        json={
+            "log_date": "2024-01-01T00:00:00Z",
+            "option_id": option_id,
+            "type": "choice",
+        },
+    )
+    assert response.status_code == 200
+
+    # Delete the habit
+    response = client.delete(f"/habits/{habit_id}")
+    assert response.status_code == 200
+
+    # Check that the habit is deleted
+    response = client.get("/habits")
+    assert response.status_code == 200
+    habits = response.json()
+    assert len(habits) == 0
+
+    # Check that the log is deleted
     response = client.get(f"/log/{habit_id}")
+    assert response.status_code == 404
+
+def test_delete_option():
+    response = client.post(
+        "/habits/new",
+        json={
+            "name": "Test Choice Habit",
+            "type": "choice",
+            "options": [
+                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
+                {
+                    "option_text": "Option 2",
+                },
+            ],
+        },
+    )
+    assert response.status_code == 201
+    habit_id = response.json()["id"]
+
+    response = client.get("/habits")
+    assert response.status_code == 200
+    habits = response.json()
+    option_id_1 = habits[0]["options"][0]["id"]
+    option_id_2 = habits[0]["options"][1]["id"]
+
+    response = client.delete(f"/habits/{habit_id}/options/{option_id_1}")
+    assert response.status_code == 200
+
+    response = client.get("/habits")
+    assert response.status_code == 200
+    habits = response.json()
+    assert len(habits[0]["options"]) == 1
+    assert habits[0]["options"][0]["id"] == option_id_2
+
+def test_delete_log_entry():
+    response = client.post(
+        "/habits/new",
+        json={
+            "name": "Test Completion Habit",
+            "type": "completion",
+            "completion_target": 1,
+            "target_timeframe": "day",
+        },
+    )
+    assert response.status_code == 201
+    habit_id = response.json()["id"]
+
+    response = client.post(
+        f"/log/{habit_id}",
+        json={"log_date": "2024-01-01T00:00:00Z", "status": True, "type": "completion"},
+    )
+    assert response.status_code == 200
+    log_id = response.json()["id"]
+
+    response = client.delete(f"/log/{log_id}")
+    assert response.status_code == 200
+
+    response = client.get(f"/habits/{habit_id}/logs")
     assert response.status_code == 200
     logs = response.json()
-    assert len(logs) == 1
-    assert logs[0]["option"]["id"] == option_id
-    assert logs[0]["habit_type"] == "choice"
+    assert len(logs) == 0
