@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Literal, Annotated, get_origin, Optional
-from models import HabitType, Timeframe
+from db_models import HabitType, Timeframe
 from datetime import datetime
 
 
@@ -42,6 +42,7 @@ class CompletionHabitOptions(HabitOptions):
 class MeasureableHabitOptions(HabitOptions):
     type: Literal[HabitType.MEASURABLE] = HabitType.MEASURABLE
     target: int
+    completion_target: Timeframe
     unit: str
 
 

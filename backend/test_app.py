@@ -7,7 +7,7 @@ import pytest
 def monkeypatch_db(monkeypatch: pytest.MonkeyPatch):
     from sqlalchemy import create_engine, StaticPool
     from sqlalchemy.orm import sessionmaker
-    from models import Base
+    from db_models import Base
 
     # Create an in-memory SQLite database for testing
     engine = create_engine(

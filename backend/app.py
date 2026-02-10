@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import get_engine
+from db_models import get_engine
 from sqlalchemy.orm import sessionmaker, Session
 import api_models as a  # Shortcut for "API models", reduces confusion compared to importing without alias
-import models as d  # Shortcut for "database models"
+import db_models as d  # Shortcut for "database models"
 
 app = FastAPI()
 
