@@ -91,7 +91,7 @@ HabitInput = Annotated[
 ]
 
 HabitPatch = Annotated[
-    CompletionHabitPatch | MeasureableHabitPatch | ChoiceHabitPatch,
+    CompletionHabitPatch | MeasureableHabitPatch | ChoiceHabitPatch, # ty:ignore[invalid-type-form] # ty throws an error since these are created at runtime
     Field(discriminator="type"),
 ]
 
@@ -108,6 +108,6 @@ MeasureableHabitLogPatch = make_patch_model(MeasureableHabitLog)
 ChoiceHabitLogPatch = make_patch_model(ChoiceHabitLog)
 
 HabitLogPatch = Annotated[
-    CompletionHabitLogPatch | MeasureableHabitLogPatch | ChoiceHabitLogPatch,
+    CompletionHabitLogPatch | MeasureableHabitLogPatch | ChoiceHabitLogPatch, # ty:ignore[invalid-type-form] # ty throws an error since these are created at runtime
     Field(discriminator="type"),
 ]
