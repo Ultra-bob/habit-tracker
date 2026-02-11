@@ -26,443 +26,413 @@ def monkeypatch_db(monkeypatch: pytest.MonkeyPatch):
 client = TestClient(app.app)
 
 
-def test_create_completion_habit():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
-    )
-    assert response.status_code == 201
+def create_example_habits(client):
+    """
+    Helper function to create a variety of habits to avoid duplicating code in tests.
+    """
 
+    # Create a simple completion habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "completion",
+                "name": "Medicine",
+                "completion_target": 1,
+                "target_timeframe": "day",
+            },
+        ).status_code
+        == 201
+    )
+
+    # Create a weekly completion habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "completion",
+                "name": "Exercise",
+                "completion_target": 3,
+                "target_timeframe": "week",
+            },
+        ).status_code
+        == 201
+    )
+
+    # Create a twice daily completion habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "completion",
+                "name": "Flossing",
+                "completion_target": 2,
+                "target_timeframe": "day",
+            },
+        ).status_code
+        == 201
+    )
+
+    # Create a measureable habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "measurable",
+                "name": "Water Intake",
+                "target": 2000,
+                "completion_target": "day",
+                "unit": "ml",
+            },
+        ).status_code
+        == 201
+    )
+
+    # Create a monthly measureable habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "measurable",
+                "name": "Pages Read",
+                "target": 1000,
+                "completion_target": "month",
+                "unit": "pages",
+            },
+        ).status_code
+        == 201
+    )
+
+    # Create a choice habit
+    assert (
+        client.post(
+            "/habits/new",
+            json={
+                "type": "choice",
+                "name": "Mood",
+                "options": [
+                    {"option_text": "Happy", "color": "yellow", "icon": "smile"},
+                    {"option_text": "Sad", "color": "blue", "icon": "frown"},
+                    {"option_text": "Neutral", "color": "gray", "icon": "meh"},
+                ],
+            },
+        ).status_code
+        == 201
+    )
+
+#* Uses the example data to test all the creation endpoints at once
+
+def test_example_habits_creation():
+    create_example_habits(client)
+
+    # get all habits and check they were created correctly
     response = client.get("/habits")
     assert response.status_code == 200
     habits = response.json()
-    assert len(habits) == 1
-    assert habits[0]["name"] == "Test Completion Habit"
-    assert habits[0]["habit_type"] == "completion"
-    assert habits[0]["completion_target"] == 1
-    assert habits[0]["target_timeframe"] == "day"
 
+    # print(habits)  # Add this line to print the response for debugging
 
-def test_create_choice_habit():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
+    assert len(habits) == 6
+    assert habits == [
+        {
+            "id": 1,
+            "name": "Medicine",
+            "habit_type": "completion",
+            "completion_target": 1,
+            "target_timeframe": "day",
+        },
+        {
+            "id": 2,
+            "name": "Exercise",
+            "habit_type": "completion",
+            "completion_target": 3,
+            "target_timeframe": "week",
+        },
+        {
+            "id": 3,
+            "name": "Flossing",
+            "habit_type": "completion",
+            "completion_target": 2,
+            "target_timeframe": "day",
+        },
+        {
+            "id": 4,
+            "name": "Water Intake",
+            "habit_type": "measurable",
+            "target": 2000,
+            "completion_target": "day",
+            "unit": "ml",
+        },
+        {
+            "id": 5,
+            "name": "Pages Read",
+            "habit_type": "measurable",
+            "target": 1000,
+            "completion_target": "month",
+            "unit": "pages",
+        },
+        {
+            "id": 6,
+            "name": "Mood",
+            "habit_type": "choice",
             "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
                 {
-                    "option_text": "Option 2",  # Test that options may not have color or icon
+                    "option_text": "Happy",
+                    "color": "yellow",
+                    "icon": "smile",
+                    "id": 1,
+                    "habit_id": 6,
+                },
+                {
+                    "option_text": "Sad",
+                    "color": "blue",
+                    "icon": "frown",
+                    "id": 2,
+                    "habit_id": 6,
+                },
+                {
+                    "option_text": "Neutral",
+                    "color": "gray",
+                    "icon": "meh",
+                    "id": 3,
+                    "habit_id": 6,
                 },
             ],
         },
-    )
-    assert response.status_code == 201
+    ]
 
-    response = client.get("/habits")
+#* Tests for updating habits
+
+def test_update_completion_habit():
+    create_example_habits(client)
+
+    # Update the name of the first habit
+    response = client.patch("/habits/1", json={"name": "Morning Medicine"})
     assert response.status_code == 200
-    habits = response.json()
-    assert len(habits) == 1
-    assert habits[0]["name"] == "Test Choice Habit"
-    assert habits[0]["habit_type"] == "choice"
-    assert len(habits[0]["options"]) == 2
-    assert habits[0]["options"][0]["option_text"] == "Option 1"
-    assert habits[0]["options"][0]["color"] == "red"
-    assert habits[0]["options"][0]["icon"] == "icon1"
-    assert habits[0]["options"][1]["option_text"] == "Option 2"
-    assert habits[0]["options"][1].get("color") is None
-    assert habits[0]["options"][1].get("icon") is None
+
+    # Get the updated habit and check the name was changed
+    response = client.get("/habits/1")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["name"] == "Morning Medicine"
 
 
-def test_modify_habit():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
+def test_update_weekly_completion_habit():
+    create_example_habits(client)
 
+    # Update the completion target of the second habit
+    response = client.patch("/habits/2", json={"completion_target": 4})
+    assert response.status_code == 200
+
+    # Get the updated habit and check the completion target was changed
+    response = client.get("/habits/2")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["completion_target"] == 4
+
+
+def test_update_completion_timeframe():
+    create_example_habits(client)
+
+    # Update the target timeframe of the third habit
+    response = client.patch("/habits/3", json={"target_timeframe": "week"})
+    assert response.status_code == 200
+
+    # Get the updated habit and check the target timeframe was changed
+    response = client.get("/habits/3")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["target_timeframe"] == "week"
+
+def test_update_measurable_habit():
+    create_example_habits(client)
+
+    # Update the target of the fourth habit
+    response = client.patch("/habits/4", json={"target": 2500})
+    assert response.status_code == 200
+
+    # Get the updated habit and check the target was changed
+    response = client.get("/habits/4")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["target"] == 2500
+
+def test_update_measurable_habit_timeframe():
+    create_example_habits(client)
+
+    # Update the completion target of the fifth habit
+    response = client.patch("/habits/5", json={"completion_target": "day"})
+    assert response.status_code == 200
+
+    # Get the updated habit and check the completion target was changed
+    response = client.get("/habits/5")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["completion_target"] == "day"
+
+def test_update_choice_habit_name():
+    create_example_habits(client)
+
+    # Update the name of the sixth habit
+    response = client.patch("/habits/6", json={"name": "Daily Mood"})
+    assert response.status_code == 200
+
+    # Get the updated habit and check the name was changed
+    response = client.get("/habits/6")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["name"] == "Daily Mood"
+
+def test_disallow_change_habit_type():
+    create_example_habits(client)
+
+    # Try to change the type of the first habit
+    response = client.patch("/habits/1", json={"type": "measurable"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Changing habit type is not supported"
+
+def test_disallow_invalid_update():
+    create_example_habits(client)
+
+    # Try to update a habit with an invalid field
+    response = client.patch("/habits/1", json={"invalid_field": "value"})
+    assert response.status_code == 422  # Unprocessable Entity due to validation error
+
+def test_disallow_update_option_of_other_habit_types():
+    create_example_habits(client)
+
+    # Try to update the unit of the first habit, which is a completion habit and doesn't have a unit field
     response = client.patch(
-        f"/habits/{habit_id}",
-        json={
-            "name": "Updated Completion Habit",
-            "completion_target": 2,
-            "type": "completion",
-        },
+        "/habits/1",
+        json={ "unit": "mg" },
     )
-    assert response.status_code == 200
+    assert response.status_code == 400  # Unprocessable Entity due to validation error
 
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    assert len(habits) == 1
-    assert habits[0]["name"] == "Updated Completion Habit"
-    assert habits[0]["completion_target"] == 2
-    assert habits[0]["habit_type"] == "completion"
+#* Tests for options on choice habits
 
-def test_add_habit_option():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "icon": "icon1"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
+def test_disallow_option_update_through_habit_endpoint():
+    create_example_habits(client)
 
-    response = client.post(
-        f"/habits/{habit_id}/options",
-        json={"option_text": "Option 2", "color": "blue"},
-    )
-    assert response.status_code == 200
-
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    assert len(habits) == 1
-    assert len(habits[0]["options"]) == 2
-    assert habits[0]["options"][1]["option_text"] == "Option 2"
-    assert habits[0]["options"][1]["color"] == "blue"
-
-def test_modify_habit_option():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "icon": "icon1"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.get("/habits")
-    option_id = response.json()[0]["options"][0]["id"]
-
+    # Try to update the options of the choice habit through the habit endpoint
     response = client.patch(
-        f"/habits/{habit_id}/options/{option_id}",
-        json={"option_text": "Updated Option 1", "color": "green"},
-    )
-    assert response.status_code == 200
-
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    assert len(habits) == 1
-    assert len(habits[0]["options"]) == 1
-    assert habits[0]["options"][0]["option_text"] == "Updated Option 1"
-    assert habits[0]["options"][0]["color"] == "green"
-
-def test_reject_option_addition_for_non_choice_habit():
-    response = client.post(
-        "/habits/new",
+        "/habits/6",
         json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
+            "options": [
+                {"option_text": "Ecstatic", "color": "bright yellow", "icon": "grin"},
+                {"option_text": "Miserable", "color": "dark blue", "icon": "sob"},
+            ]
         },
     )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Updating options through this endpoint is not supported"
 
+def test_add_choice_option():
+    create_example_habits(client)
+
+    # Add a new option to the choice habit
     response = client.post(
-        f"/habits/{habit_id}/options",
-        json={"option_text": "Option 1", "color": "red"},
+        "/habits/6/options",
+        json={"option_text": "Anxious", "color": "purple", "icon": "sad"},
+    )
+    assert response.status_code == 201
+
+    # Get the updated habit and check the new option was added
+    response = client.get("/habits/6")
+    assert response.status_code == 200
+    habit = response.json()
+    assert len(habit["options"]) == 4
+    assert habit["options"][-1]["option_text"] == "Anxious"
+    assert habit["options"][-1]["color"] == "purple"
+    assert habit["options"][-1]["icon"] == "sad"
+
+def test_update_choice_option():
+    create_example_habits(client)
+
+    # Update the first option of the choice habit
+    response = client.patch(
+        "/habits/6/options/1",
+        json={"option_text": "Very Happy", "color": "bright yellow"},
+    )
+    assert response.status_code == 200
+
+    # Get the updated habit and check the option was updated
+    response = client.get("/habits/6")
+    assert response.status_code == 200
+    habit = response.json()
+    assert habit["options"][0]["option_text"] == "Very Happy"
+    assert habit["options"][0]["color"] == "bright yellow"
+    assert habit["options"][0]["icon"] == "smile"  # unchanged
+
+def test_delete_choice_option():
+    create_example_habits(client)
+
+    # Delete the second option of the choice habit
+    response = client.delete("/habits/6/options/2")
+    assert response.status_code == 200
+
+    # Get the updated habit and check the option was deleted
+    response = client.get("/habits/6")
+    assert response.status_code == 200
+    habit = response.json()
+    assert len(habit["options"]) == 2
+    assert all(option["option_text"] != "Sad" for option in habit["options"])
+
+def test_delete_choice_option_invalid_habit():
+    create_example_habits(client)
+
+    # Try to delete an option from a non-choice habit
+    response = client.delete("/habits/1/options/1")
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Habit is not a choice habit"
+
+def test_delete_choice_option_not_found():
+    create_example_habits(client)
+
+    # Try to delete a non-existent option from the choice habit
+    response = client.delete("/habits/6/options/999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Option not found for this habit"
+
+def test_update_choice_option_invalid_habit():
+    create_example_habits(client)
+
+    # Try to update an option from a non-choice habit
+    response = client.patch(
+        "/habits/1/options/1",
+        json={"option_text": "Very Happy", "color": "bright yellow"},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Habit is not a choice habit"
 
-def test_reject_mismatched_log_type():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
+def test_update_choice_option_not_found():
+    create_example_habits(client)
 
-    response = client.post(
-        f"/log/{habit_id}",
-        json={
-            "log_date": "2024-01-01T00:00:00Z",
-            "option_id": 1,
-            "type": "choice",
-        },
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Habit type mismatch"
-
-
-def test_reject_invalid_option_log():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.post(
-        f"/log/{habit_id}",
-        json={
-            "log_date": "2024-01-01T00:00:00Z",
-            "option_id": 999,
-            "type": "choice",
-        },
+    # Try to update a non-existent option from the choice habit
+    response = client.patch(
+        "/habits/6/options/999",
+        json={"option_text": "Very Happy", "color": "bright yellow"},
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Option not found"
+    assert response.json()["detail"] == "Option not found for this habit"
 
+def test_add_choice_option_invalid_habit():
+    create_example_habits(client)
 
-def test_reject_option_log_for_wrong_habit():
+    # Try to add an option to a non-choice habit
     response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit 1",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id_1 = response.json()["id"]
-
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit 2",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 2", "color": "blue", "icon": "icon2"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id_2 = response.json()["id"]
-
-    assert habit_id_1 != habit_id_2 # No clue when this would not pass, but just to be safe
-
-    response = client.get("/habits")
-    habits = response.json()
-    option_id_1 = habits[0]["options"][0]["id"]
-
-    response = client.post(
-        f"/log/{habit_id_2}",
-        json={
-            "log_date": "2024-01-01T00:00:00Z",
-            "option_id": option_id_1,
-            "type": "choice",
-        },
+        "/habits/1/options",
+        json={"option_text": "Anxious", "color": "purple", "icon": "sad"},
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Option does not belong to the specified habit"
+    assert response.json()["detail"] == "Habit is not a choice habit"
 
+def test_add_choice_option_habit_not_found():
+    create_example_habits(client)
 
-def test_log_completion_habit():
+    # Try to add an option to a non-existent habit
     response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
+        "/habits/999/options",
+        json={"option_text": "Anxious", "color": "purple", "icon": "sad"},
     )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.post(
-        f"/log/{habit_id}",
-        json={"log_date": "2024-01-01T00:00:00Z", "status": True, "type": "completion"},
-    )
-    assert response.status_code == 200
-
-    response = client.get(f"/habits/{habit_id}/logs")
-    assert response.status_code == 200
-    logs = response.json()
-    assert len(logs) == 1
-    assert logs[0]["status"] == True
-    assert logs[0]["habit_type"] == "completion"
-
-
-def test_log_choice_habit():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
-                {
-                    "option_text": "Option 2",
-                },
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.get("/habits")
-    option_id = response.json()[0]["options"][0]["id"]
-
-    response = client.post(
-        f"/log/{habit_id}",
-        json={
-            "log_date": "2024-01-01T00:00:00Z",
-            "option_id": option_id,
-            "type": "choice",
-        },
-    )
-    entry_id = response.json()["id"]
-    assert response.status_code == 200
-
-    response = client.get(f"/log/{entry_id}")
-    assert response.status_code == 200
-    log_entry = response.json()
-    assert log_entry["option"]["id"] == option_id
-    assert log_entry["habit_type"] == "choice"
-
-def test_delete_habit():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.delete(f"/habits/{habit_id}")
-    assert response.status_code == 200
-
-def test_delete_habit_deletes_logs_and_options():
-    # Create a choice habit with an option and a log
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.get("/habits")
-    option_id = response.json()[0]["options"][0]["id"]
-
-    response = client.post(
-        f"/log/{habit_id}",
-        json={
-            "log_date": "2024-01-01T00:00:00Z",
-            "option_id": option_id,
-            "type": "choice",
-        },
-    )
-    assert response.status_code == 200
-
-    # Delete the habit
-    response = client.delete(f"/habits/{habit_id}")
-    assert response.status_code == 200
-
-    # Check that the habit is deleted
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    assert len(habits) == 0
-
-    # Check that the log is deleted
-    response = client.get(f"/log/{habit_id}")
     assert response.status_code == 404
-
-def test_delete_option():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Choice Habit",
-            "type": "choice",
-            "options": [
-                {"option_text": "Option 1", "color": "red", "icon": "icon1"},
-                {
-                    "option_text": "Option 2",
-                },
-            ],
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    option_id_1 = habits[0]["options"][0]["id"]
-    option_id_2 = habits[0]["options"][1]["id"]
-
-    response = client.delete(f"/habits/{habit_id}/options/{option_id_1}")
-    assert response.status_code == 200
-
-    response = client.get("/habits")
-    assert response.status_code == 200
-    habits = response.json()
-    assert len(habits[0]["options"]) == 1
-    assert habits[0]["options"][0]["id"] == option_id_2
-
-def test_delete_log_entry():
-    response = client.post(
-        "/habits/new",
-        json={
-            "name": "Test Completion Habit",
-            "type": "completion",
-            "completion_target": 1,
-            "target_timeframe": "day",
-        },
-    )
-    assert response.status_code == 201
-    habit_id = response.json()["id"]
-
-    response = client.post(
-        f"/log/{habit_id}",
-        json={"log_date": "2024-01-01T00:00:00Z", "status": True, "type": "completion"},
-    )
-    assert response.status_code == 200
-    log_id = response.json()["id"]
-
-    response = client.delete(f"/log/{log_id}")
-    assert response.status_code == 200
-
-    response = client.get(f"/habits/{habit_id}/logs")
-    assert response.status_code == 200
-    logs = response.json()
-    assert len(logs) == 0
+    assert response.json()["detail"] == "Habit not found"

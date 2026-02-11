@@ -61,6 +61,7 @@ class MeasureableHabit(Habit):
 
     id: Mapped[int] = mapped_column(ForeignKey("habits.id"), primary_key=True)
     target: Mapped[int] = mapped_column()
+    completion_target: Mapped[Timeframe] = mapped_column(SQLEnum(Timeframe))
     unit: Mapped[str] = mapped_column(String(50))
 
     __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
