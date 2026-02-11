@@ -55,13 +55,17 @@ def update_habit(id: int, habit: a.HabitPatch):
             raise HTTPException(
                 status_code=400, detail="Changing habit type is not supported"
             )
-        if a.HabitOptions.inspect_type(habit) is not None and a.HabitOptions.inspect_type(habit) != existing_habit.habit_type:
+        if (
+            a.HabitOptions.inspect_type(habit) is not None
+            and a.HabitOptions.inspect_type(habit) != existing_habit.habit_type
+        ):
             raise HTTPException(
                 status_code=400, detail="Invalid update data for this habit type"
             )
         if hasattr(habit, "options"):
             raise HTTPException(
-                status_code=400, detail="Updating options through this endpoint is not supported"
+                status_code=400,
+                detail="Updating options through this endpoint is not supported",
             )
 
         update_data = habit.model_dump(exclude_unset=True, exclude={"type"})

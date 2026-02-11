@@ -45,7 +45,7 @@ class HabitOptions(BaseModel):
 
     name: str
 
-    @staticmethod # Necessary since the make_patch_model function doesn't preserve methods
+    @staticmethod  # Necessary since the make_patch_model function doesn't preserve methods
     def inspect_type(self) -> HabitType | None:
         #! This is a bit hacky but allows us to avoid repeating the type field in every subclass
         if isinstance(self, (CompletionHabitOptions, CompletionHabitPatch)):
@@ -70,9 +70,11 @@ class MeasureableHabitOptions(HabitOptions):
     completion_target: Timeframe
     unit: str
 
+
 class ChoiceHabitOptions(HabitOptions):
     type: Literal[HabitType.CHOICE] = HabitType.CHOICE
     options: list[ChoiceHabitOption]
+
 
 def make_patch_model(
     model: type[BaseModel], *, discriminator: str | None = "type"
@@ -116,7 +118,9 @@ HabitInput = Annotated[
     Field(discriminator="type"),
 ]
 
-HabitPatch = HabitOptions | CompletionHabitPatch | MeasureableHabitPatch | ChoiceHabitPatch
+HabitPatch = (
+    HabitOptions | CompletionHabitPatch | MeasureableHabitPatch | ChoiceHabitPatch
+)
 
 HabitLog = CompletionHabitLog | MeasureableHabitLog | ChoiceHabitLog
 
