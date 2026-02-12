@@ -81,6 +81,9 @@ class ChoiceOption(Base):
     color: Mapped[str] = mapped_column(String(20), nullable=True)
     icon: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    def to_dict(self):  # ty:ignore[invalid-method-override]
+        return super().to_dict(rules=("-habit",))
+
 
 class ChoiceHabit(Habit):
     __tablename__ = "choice_habits"
@@ -146,8 +149,6 @@ class ChoiceLogEntry(LogEntry):
 
 
 def get_engine() -> sqlalchemy.engine.Engine:
-    engine = create_engine(
-        "sqlite:///habits.db", echo=True
-    )  # Use an in-memory SQLite database for example
+    engine = create_engine("sqlite:///habits.db", echo=True)
     Base.metadata.create_all(engine)
     return engine

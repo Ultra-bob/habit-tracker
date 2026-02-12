@@ -79,6 +79,7 @@ def test_example_habits_creation(client, example_habits):
         },
     ]
 
+
 # Ensure all fields are required when creating a completion habit
 @pytest.mark.parametrize(
     "include",
@@ -104,6 +105,7 @@ def test_disallow_creating_completion_habit_missing_fields(client, include):
     )
     assert response.status_code == 422  # Unprocessable Entity
 
+
 @pytest.mark.parametrize(
     "include",
     itertools.chain(
@@ -123,5 +125,7 @@ def test_disallow_creating_measurable_habit_missing_fields(client, include):
         "completion_target": "day",
         "unit": "units",
     }
-    response = client.post("/habits/new", json={k: v for k, v in body.items() if k in include})
+    response = client.post(
+        "/habits/new", json={k: v for k, v in body.items() if k in include}
+    )
     assert response.status_code == 422  # Unprocessable Entity
