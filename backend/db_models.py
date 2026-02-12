@@ -102,7 +102,7 @@ class LogEntry(Base):
         ForeignKey("habits.id", ondelete="CASCADE"), nullable=False
     )
     habit: Mapped[Habit] = relationship(back_populates="logs")
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     habit_type: Mapped[HabitType] = mapped_column(SQLEnum(HabitType), nullable=False)
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}

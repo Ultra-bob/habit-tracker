@@ -6,7 +6,7 @@ from datetime import datetime
 
 class HabitLogBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    log_date: datetime
+    timestamp: datetime
 
     @property
     def type(self) -> HabitType:
@@ -16,6 +16,7 @@ class HabitLogBase(BaseModel):
 class CompletionHabitLog(HabitLogBase):
     status: bool
 
+    @property
     def type(self) -> HabitType:
         return HabitType.COMPLETION
 
@@ -23,6 +24,7 @@ class CompletionHabitLog(HabitLogBase):
 class MeasureableHabitLog(HabitLogBase):
     amount: int
 
+    @property
     def type(self) -> HabitType:
         return HabitType.MEASURABLE
 
@@ -30,6 +32,7 @@ class MeasureableHabitLog(HabitLogBase):
 class ChoiceHabitLog(HabitLogBase):
     option_id: int
 
+    @property
     def type(self) -> HabitType:
         return HabitType.CHOICE
 

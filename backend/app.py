@@ -1,4 +1,3 @@
-import hashlib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from db_models import get_engine
@@ -158,7 +157,7 @@ def get_habit_options(id: int):
         return [option.to_dict() for option in habit.options]
 
 
-@app.get("/habits/{habit_id}/logs")
+@app.get("/log/{habit_id}")
 def get_habit_logs(habit_id: int):
     with db() as session:
         habit = session.get(d.Habit, habit_id)
@@ -167,10 +166,10 @@ def get_habit_logs(habit_id: int):
         return [log.to_dict() for log in habit.logs]
 
 
-@app.post("/log/{id}", status_code=201)
-def log_habit(id: int, log: a.HabitLog):
+@app.post("/log/{habit_id}", status_code=201)
+def log_habit(habit_id: int, log: a.HabitLog):
     with db() as session:
-        habit = session.get(d.Habit, id)
+        habit = session.get(d.Habit, habit_id)
         if habit is None:
             raise HTTPException(status_code=404, detail="Habit not found")
         if habit.habit_type != log.type:
@@ -178,15 +177,15 @@ def log_habit(id: int, log: a.HabitLog):
 
         if isinstance(log, a.CompletionHabitLog):
             entry = d.CompletionLogEntry(
-                habit_id=id,
-                recorded_at=log.log_date,
+                habit_id=habit_id,
+                timestamp=log.timestamp,
                 status=log.status,
                 habit_type=d.HabitType.COMPLETION,
             )
         elif isinstance(log, a.MeasureableHabitLog):
             entry = d.MeasureableLogEntry(
-                habit_id=id,
-                recorded_at=log.log_date,
+                habit_id=habit_id,
+                timestamp=log.timestamp,
                 value=log.amount,
                 habit_type=d.HabitType.MEASURABLE,
             )
@@ -195,14 +194,14 @@ def log_habit(id: int, log: a.HabitLog):
             option = session.get(d.ChoiceOption, log.option_id)
             if option is None:
                 raise HTTPException(status_code=404, detail="Option not found")
-            if option.habit_id != id:
+            if option.habit_id != habit_id:
                 raise HTTPException(
                     status_code=400,
                     detail="Option does not belong to the specified habit",
                 )
             entry = d.ChoiceLogEntry(
-                habit_id=id,
-                recorded_at=log.log_date,
+                habit_id=habit_id,
+                timestamp=log.timestamp,
                 option_id=log.option_id,
                 habit_type=d.HabitType.CHOICE,
             )
