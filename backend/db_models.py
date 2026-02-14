@@ -35,7 +35,10 @@ class Habit(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     habit_type: Mapped[HabitType] = mapped_column(SQLEnum(HabitType), nullable=False)
 
-    logs: list["LogEntry"] # stub for type checking, not an actual mapped column
+    logs: Mapped[list["LogEntry"]] = relationship(
+        back_populates="habit",
+        cascade="all, delete-orphan",
+    )
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
 
