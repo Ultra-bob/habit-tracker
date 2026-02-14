@@ -35,10 +35,7 @@ class Habit(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     habit_type: Mapped[HabitType] = mapped_column(SQLEnum(HabitType), nullable=False)
 
-    logs: Mapped[list["LogEntry"]] = relationship(
-        back_populates="habit",
-        cascade="all, delete-orphan",
-    )
+    logs: list["LogEntry"] # stub for type checking, not an actual mapped column
 
     __mapper_args__ = {"polymorphic_identity": None, "polymorphic_on": habit_type}
 
@@ -53,6 +50,11 @@ class CompletionHabit(Habit):
     completion_target: Mapped[int] = mapped_column()
     target_timeframe: Mapped[Timeframe] = mapped_column(SQLEnum(Timeframe))
 
+    logs: Mapped[list["CompletionLogEntry"]] = relationship(
+        back_populates="habit",
+        cascade="all, delete-orphan",
+    )
+
     __mapper_args__ = {"polymorphic_identity": HabitType.COMPLETION}
 
 
@@ -63,6 +65,11 @@ class MeasureableHabit(Habit):
     target: Mapped[int] = mapped_column()
     completion_target: Mapped[Timeframe] = mapped_column(SQLEnum(Timeframe))
     unit: Mapped[str] = mapped_column(String(50))
+
+    logs: Mapped[list["MeasureableLogEntry"]] = relationship(
+        back_populates="habit",
+        cascade="all, delete-orphan",
+    )
 
     __mapper_args__ = {"polymorphic_identity": HabitType.MEASURABLE}
 
@@ -90,6 +97,11 @@ class ChoiceHabit(Habit):
 
     id: Mapped[int] = mapped_column(ForeignKey("habits.id"), primary_key=True)
     options: Mapped[list[ChoiceOption]] = relationship(
+        back_populates="habit",
+        cascade="all, delete-orphan",
+    )
+
+    logs: Mapped[list["ChoiceLogEntry"]] = relationship(
         back_populates="habit",
         cascade="all, delete-orphan",
     )
