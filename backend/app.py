@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from db_models import get_engine
@@ -165,6 +166,25 @@ def get_habit_logs(habit_id: int):
             raise HTTPException(status_code=404, detail="Habit not found")
         return [log.to_dict() for log in habit.logs]
 
+@app.get("/log/{habit_id}/summary")
+def get_habit_daily_summary(habit_id: int):
+    with db() as session:
+        habit = session.get(d.Habit, habit_id)
+        if habit is None:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        days: dict[date, int] = {}
+        if isinstance(habit, d.CompletionHabit):
+            # Sort here to ensure most recent log is 
+            for entry in sorted(habit.logs, key=lambda x: x.timestamp):
+                days[entry.timestamp.date()] = days.get(entry.timestamp.date(), 0) + 1
+        if isinstance(habit, d.MeasureableHabit):
+            logs: list[d.MeasureableLogEntry] = habit.logs
+            for entry in logs:
+                days[entry.timestamp.date()] = days.get(entry.timestamp.date(), 0) + entry.value
+        if isinstance(habit, d.ChoiceHabit):
+            for entry in habit.logs:
+                days[entry.timestamp.date()] = entry.option_id
+    return days
 
 @app.post("/log/{habit_id}", status_code=201)
 def log_habit(habit_id: int, log: a.HabitLog):
