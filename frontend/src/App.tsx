@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import HabitCard from './HabitCard'
 
 function App() {
   const [habits, setHabits] = useState([])
@@ -12,11 +13,15 @@ function App() {
 
   return (
     <>
-      <div className="card">
-        <h1 className="text-2xl font-bold">Habits</h1>
-        {habits.map(habit => (
-          <div key={habit.id}>{habit.name}</div>
-        ))}
+      <div className="flex justify-center">
+        <div className="w-xl p-6">
+          <h1 className="text-2xl font-bold">Habits</h1>
+          <section className='py-6'>
+            {habits.map(habit => (
+              <HabitCard habitData={habit}></HabitCard>
+            ))}
+          </section>
+        </div>
       </div>
     </>
   )

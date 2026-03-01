@@ -164,6 +164,6 @@ class ChoiceLogEntry(LogEntry):
 
 
 def get_engine() -> sqlalchemy.engine.Engine:
-    engine = create_engine("sqlite:///habits.db", echo=True)
+    engine = create_engine("sqlite:///habits.db")
     Base.metadata.create_all(engine)
     return engine
